@@ -1,0 +1,74 @@
+[
+    {
+        "guard_name": "create_product",
+        "name":"Peut creer un produit"
+    },
+    {
+        "guard_name": "update_product",
+        "name":"Peut modifier un produit"
+    },
+    {
+        "guard_name": "view_product",
+        "name":"Peut voir les produits"
+    },
+    {
+        "guard_name": "delete_product",
+        "name":"Peut supprimer un produit"
+    },
+    {
+        "guard_name": "create_mesure",
+        "name":"Peut creer une mésure"
+    },
+    {
+        "guard_name": "update_mesure",
+        "name":"Peut modifier une mésure"
+    },
+    {
+        "guard_name": "view_mesure",
+        "name":"Peut voir les mésures"
+    },
+    {
+        "guard_name": "delete_mesure",
+        "name":"Peut supprimer une mésure"
+    },
+    {
+        "guard_name": "update_shop",
+        "name":"Peut modifier l'entrerise"
+    },
+    {
+        "guard_name": "view_order",
+        "name":"Peut voir les commandes"
+    },
+    {
+        "guard_name": "create_user",
+        "name":"Peut engager un agent"
+    },
+    {
+        "guard_name": "delete_user",
+        "name":"Peut révoquer un agent"
+    },
+    {
+        "guard_name": "update_user",
+        "name":"Peut modifier un engagement"
+    },
+    {
+        "guard_name": "view_user",
+        "name":"Peut voir les employés"
+    },
+    {
+        "guard_name": "create_role",
+        "name":"Peut créer une fonction"
+    },
+    {
+        "guard_name": "update_role",
+        "name":"Peut modifier une fonction"
+    },
+    {
+        "guard_name": "view_role",
+        "name":"Peut voir les fonctions"
+    },
+    {
+        "guard_name": "view_customer",
+        "name":"Peut voir les clients"
+    }
+]
