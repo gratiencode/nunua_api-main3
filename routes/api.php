@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\api\AppSettingsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
@@ -9,6 +8,7 @@ use App\Http\Controllers\api\UserController;
 use App\Http\Controllers\api\OtherController;
 use App\Http\Controllers\api\marqueController;
 use App\Http\Controllers\api\MesureController;
+use App\Http\Controllers\api\ProductController;
 use App\Http\Controllers\api\CategoryController;
 use App\Http\Controllers\api\CommandeController;
 use App\Http\Controllers\api\ProduitsController;
@@ -17,6 +17,7 @@ use App\Http\Controllers\api\EngagementController;
 use App\Http\Controllers\api\EntrepriseController;
 use App\Http\Controllers\api\NewsLetterController;
 use App\Http\Controllers\api\PermissionController;
+use App\Http\Controllers\api\AppSettingsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -129,9 +130,20 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post("/global/about_us", [AppSettingsController::class, 'createAbout']);
     Route::post("/global/social", [AppSettingsController::class, 'createSocial']);
 
-    //newsletter
+});
 
-    
-   
+##Inserer l'utilisateur kazisafe en nunua
+Route::post("/register-kazisafe/user", [UserController::class, 'connectWithKaziSafe]']);
+##Product api
+Route::get('/products', [ProductController::class, 'showAllProducts']);
 
+//optimization routes
+Route::get('/optimize', function(){
+    $exitCode = Artisan::call('optimize');
+    return 'DONE';
+});
+Route::get('/cache', function(){
+    $exitCode = Artisan::call('cache:clear');
+    $exitCode = Artisan::call('config:cache');
+    return 'DONE';
 });

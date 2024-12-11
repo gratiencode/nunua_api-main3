@@ -225,4 +225,41 @@ class UserController extends Controller
             "ville" => "required"
         ]);
     }
+
+    public function connectWithKaziSafe(Request $request)
+    {
+
+        $request->validate([
+            'full_name'  => 'required|string|max:255',
+            'email' => 'required|email|unique:t_users,email',
+            'phone' => 'required',
+            "pswd" => "required",
+
+        ]);
+
+        // Check if the user already exists
+        $user = User::where('email', $request->email)->orWhere('phone', $request->phone)->first();
+
+        if ($user) {
+            return response()->json(['message' => 'Vous êtes déjà enregistré dans le système Nunua'], 200);
+        }
+
+        // Create the user in Nunua
+        $user = User::create([
+            'full_name'  => $request->full_name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'pswd' => Hash::make($request->pswd)
+        ]);
+
+        //Automatically connect the user upon successful account creation
+        $token = $user->createToken('accessToken')->plainTextToken;
+        
+        return response()->json([
+            'message' => 'Enregistrement fait avec succès', 
+            'user' => $user,
+            'token' => $token 
+        ], 201);
+    }
+
 }
