@@ -2,31 +2,44 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
 use Exception;
+use App\Models\Marque;
+use App\Models\Mesure;
+use App\Models\Produits;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+use App\Http\Controllers\api\UtilController;
 
 class ProductApiService
 {
+    protected $baseUrl, $allProductEndpoint, $measureProductEndpoint;
+
+    public function __construct(){
+        $this->baseUrl = 'https://app.kazisafe.com/v1/';
+        $this->allProductEndpoint = 'produit/showall';
+        $this->measureProductEndpoint = 'mesures/show/for/product/';
+        $this->marqueProductEndpoint = 'marque/show/for/product/';
+
+    }
     /**
      * Call the external API to retrieve products.
      *
      * @return array|string
      */
-    public function getProducts()
+    public function getKaziSafeProducts($access_token)
     {
-        $baseUrl = 'https://app.kazisafe.com/v1/';
-        $endpoint = 'produit/showall';
-        $token = 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzM5MTE3MTYsImlhdCI6MTczMzkwOTkxNiwiaXNzIjoiaHR0cHM6Ly9hcHAua2F6aXNhZmUuY29tL3YxL2F1dGgvYXV0aDAvd2ViL3NpZ25pbiIsInN1YiI6ImMyNTQ3ZGM4ZDEyNDRlOTQ4NGI1MzQ0YjIwYWVjNGFlIiwianRpIjoiNDg2MDhmNjMtNGRkMS00ODA0LTk3YTItZDBlNGEzMDRlZmIxIn0.aSxm4fUuntfIr5IXa2VPqk_Fnb5dTf-RTCVKGCiESr-HRzUL3PqNqa-wBXtf-85VggCnZQjHSbHuCfGpDyXsKw';
-
+        $baseUrl = $this->baseUrl;
+        $product_endpoint = $this->allProductEndpoint;
+        
         try {
             // Make the GET request
             $response = Http::withoutVerifying()
                 ->timeout(60)
-                ->withToken($token)
+                ->withToken($access_token)
                 ->accept('application/json')
-                ->get("{$baseUrl}{$endpoint}");
+                ->get($baseUrl . $product_endpoint);
 
-            \Log::info('Request URL', ['url' => "{$baseUrl}{$endpoint}"]);
+            \Log::info('Request URL', ['url' => $baseUrl . $product_endpoint]);
             \Log::info('Response Status', ['status' => $response->status()]);
             \Log::info('Response Headers', ['headers' => $response->headers()]);
             \Log::info('Response Body', ['body' => $response->body()]);
@@ -62,6 +75,81 @@ class ProductApiService
                 'status' => 'error',
                 'message' => 'An unexpected error occurred: ' . $e->getMessage(),
             ];
+        }
+    }
+
+    public function saveKazisafeProductInNunua(array $products, $entreprise, $access_token)
+    {
+        try {
+            $savedProducts = [];
+            $baseUrl = $this->baseUrl;
+            $mesure_product = $this->measureProductEndpoint;
+
+            foreach ($products as $product) {
+                $existingProduct = Produits::where('name_produit', $product['name'])
+                                            ->where('id_entrep', $entreprise->id)
+                                            ->first();
+
+                if ($existingProduct) {
+                    return ['error' => "Le produit " . $product['name'] . " existe déjà dans Nunua."];
+                }
+
+                // Fetch and save mesure data of the  selected products
+                $id_mesure = null;
+                $response_mesure = Http::withoutVerifying()
+                    ->withToken($access_token)
+                    ->accept('application/json')
+                    ->get($baseUrl . $mesure_product . $product['id']);
+
+                if ($response_mesure->successful()) {
+                    $mesures = $response_mesure->json();
+
+                    foreach ($mesures as $mesure) {
+                        $savedMesure = Mesure::firstOrCreate(
+                            [
+                                'name' => $mesure['description'],
+                                'id_entrep' => $entreprise->id
+                            ],
+                            [
+                                'id'        => $mesure['uid'],
+                                'name'      => $mesure['description'],
+                                'id_entrep' => $entreprise->id,
+                            ]
+                        );
+                        // Assign the `id` of the last saved measure
+                        $id_mesure = $savedMesure->id;
+                    }
+                }
+
+                // Save product images
+                $images = UtilController::uploadMultipleImage($product['images'], '/uploads/products/');
+
+                $newProduct = $entreprise->produits()->create([
+                    'name_produit'  => $product['name'],
+                    'description'   => $product['description'],
+                    'price'         => $product['price'],
+                    'image'         => $images[0],
+                    'qte'           => $product['quantity'],
+                    'id_mesure'     => $id_mesure,
+                    'id_marque'     => $product['id_marque'],
+                    'id_category'   => $product['id_category'],
+                    'price_red'     => $product['price_red']
+                ]);
+
+                // Create product images
+                foreach ($images as $image) {
+                    $newProduct->images()->create([
+                        'images' => $image,
+                    ]);
+                }
+
+                $savedProducts[] = $newProduct;
+            }
+
+            return ['success' => 'Produits enregistrés avec succès.', 'data' => $savedProducts];
+        } catch (Exception $e) {
+            Log::error('Error saving products: ' . $e->getMessage());
+            return ['error' => 'Une erreur inattendue s\'est produite. ' . $e->getMessage()];
         }
     }
 

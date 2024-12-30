@@ -8,7 +8,7 @@ use App\Http\Controllers\api\UserController;
 use App\Http\Controllers\api\OtherController;
 use App\Http\Controllers\api\marqueController;
 use App\Http\Controllers\api\MesureController;
-use App\Http\Controllers\api\ProductController;
+use App\Http\Controllers\api\KazisafeProductController;
 use App\Http\Controllers\api\CategoryController;
 use App\Http\Controllers\api\CommandeController;
 use App\Http\Controllers\api\ProduitsController;
@@ -132,16 +132,18 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
 
 });
 
-##Inserer l'utilisateur kazisafe en nunua
+#Inserer l'utilisateur kazisafe en nunua
 Route::post("/register-kazisafe/user", [UserController::class, 'connectWithKaziSafe]']);
-##Product api
-Route::get('/products', [ProductController::class, 'showAllProducts']);
+#Product api
+Route::get('/products', [KazisafeProductController::class, 'showAllProducts']);
+Route::post('/products', [KazisafeProductController::class, 'saveKaziSafeProduct']);
 
 //optimization routes
 Route::get('/optimize', function(){
     $exitCode = Artisan::call('optimize');
     return 'DONE';
 });
+
 Route::get('/cache', function(){
     $exitCode = Artisan::call('cache:clear');
     $exitCode = Artisan::call('config:cache');

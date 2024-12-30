@@ -10,5 +10,5 @@ class Mesure extends Model
 {
     use HasFactory, HasUuids;
     protected $table = 't_mesure';
-    protected $fillable = ['name', 'status', 'deleted'];
+    protected $fillable = ['name', 'id_entrep', 'status', 'deleted'];
 }
