@@ -12,15 +12,15 @@ use App\Http\Controllers\api\UtilController;
 
 class ProductApiService
 {
-    protected $baseUrl, $allProductEndpoint, $measureProductEndpoint;
+    protected $baseUrl, $allProductEndpoint, $measureProductEndpoint, $etatStockEndPoint, $salePriceRecquisition;
 
     public function __construct()
     {
         $this->baseUrl = 'https://app.kazisafe.com/v1/';
         $this->allProductEndpoint = 'produit/showall';
-        $this->measureProductEndpoint = 'mesures/show/for/product/';
+        $this->etatStockEndPoint = 'req/rem/inv/';
         $this->marqueProductEndpoint = 'marque/show/for/product/';
-
+        $this->salePriceRecquisition = 'prices/for/recq/';
     }
     /**
      * Summary of getKaziSafeProducts
@@ -91,7 +91,8 @@ class ProductApiService
         try {
             $savedProducts = [];
             $baseUrl = $this->baseUrl;
-            $mesure_product = $this->measureProductEndpoint;
+            $etat_stock_endpoint = $this->etatStockEndPoint;
+            $sale_price_endpoint = $this->salePriceRecquisition;
 
             foreach ($products as $product):
                 $existingProduct = Produits::where('name_produit', $product['name'])
@@ -102,69 +103,78 @@ class ProductApiService
                     return ['error' => "Le produit " . $product['name'] . " existe déjà dans Nunua."];
                 }
 
-                // Fetch and save mesure data of the  selected products
+                // Fetch and save etat de staock data of the  selected products
                 $id_mesure = null;
-                $response_mesure = Http::withoutVerifying()
+                $response_etat_stock = Http::withoutVerifying()
                     ->withToken($access_token)
                     ->accept('application/json')
-                    ->get($baseUrl . $mesure_product . $product['id']);
+                    ->get($baseUrl . $etat_stock_endpoint . $product['id']);
 
-                if ($response_mesure->successful()):
-                    $mesures = $response_mesure->json();
+                if ($response_etat_stock ->successful()):
+                    $etat_stock = $response_etat_stock->json();
 
-                    foreach ($mesures as $mesure) {
-                        $savedMesure = Mesure::firstOrCreate(
-                            [
-                                'name' => $mesure['description'],
-                                'id_entrep' => $entreprise->id
-                            ],
-                            [
-                                'id' => $mesure['uid'],
-                                'name' => $mesure['description'],
-                                'id_entrep' => $entreprise->id,
-                            ]
-                        );
-                        // Assign the `id` of the last saved measure
-                        $id_mesure = $savedMesure->id;
-                    }
+                    //Fetch the sale price endpoint
+                    $response_sale_price = Http::withoutVerifying()
+                                            ->withToken($access_token)
+                                            ->accept('application/json')
+                                            ->get($baseUrl . $sale_price_endpoint . $etat_stock['currentReqUid']);
+
+                    $savedEtatStock = Mesure::firstOrCreate(
+                        [
+                            'name' => $etat_stock['mesure']['description'],
+                            'id_entrep' => $entreprise->id
+                        ],
+                        [
+                            'id' => $etat_stock['mesure']['uid'],
+                            'name' => $etat_stock['mesure']['description'],
+                            'id_entrep' => $entreprise->id,
+                        ]
+                    );
+                    // Assign the `id` of the last saved measure
+                    $id_mesure = $savedEtatStock->id;
 
                     // Save product images
                     $images = UtilController::uploadMultipleImage($product['images'], '/uploads/products/');
 
-                    $newProduct = $entreprise->produits()->create([
-                        'name_produit' => $product['name'],
-                        'description' => $product['description'],
-                        'price' => $product['price'],
-                        'image' => $images[0],
-                        'qte' => $product['quantity'],
-                        'id_mesure' => $id_mesure,
-                        'id_marque' => $product['id_marque'],
-                        'id_category' => $product['id_category'],
-                        'price_red' => $product['price_red']
-                    ]);
+                    if($response_sale_price->successful()):
+                        $sale_price = $response_sale_price->json();
 
-                    // Create product images
-                    foreach ($images as $image) {
-                        $newProduct->images()->create([
-                            'images' => $image,
+                        $newProduct = $entreprise->produits()->create([
+                            'name_produit' => $product['name'],
+                            'description' => $product['description'],
+                            'price' => $sale_price[0]['prixUnitaire'],
+                            'image' => $images[0],
+                            'qte' => $etat_stock['quantStock'],
+                            'id_mesure' => $id_mesure,
+                            'id_marque' => $product['id_marque'],
+                            'id_category' => $product['id_category'],
+                            'price_red' => $product['price_red']
                         ]);
-                    }
 
-                    $savedProducts[] = $newProduct;
+                        // Create product images
+                        foreach ($images as $image) {
+                            $newProduct->images()->create([
+                                'images' => $image,
+                            ]);
+                        }
+                        $savedProducts[] = $newProduct;
+                    endif;
                 endif;
 
                  // Handle client or server errors
-                if ($response_mesure->clientError() || $response_mesure->serverError()):
-                    \Log::error('API Error: ', [
-                        'status' => $response_mesure->status(),
-                        'body' => $response_mesure->body(),
-                        'headers' => $response_mesure->headers(),
-                    ]);
-
+                if ($response_etat_stock->clientError() || $response_etat_stock->serverError()):
                     return [
                         'status' => 'error',
-                        'message' => $baseUrl . $mesure_product . ' API request failed with status: ' . $response_mesure->status(),
-                        'details' => $response_mesure->json(),
+                        'message' => $baseUrl . $etat_stock_endpoint . ' API request failed with status: ' . $response_etat_stock->status(),
+                        'details' => $response_etat_stock->json(),
+                    ];
+                endif;
+
+                if ($response_sale_price ->clientError() || $response_sale_price->serverError()):
+                    return [
+                        'status' => 'error',
+                        'message' => $baseUrl . $sale_price_endpoint . ' API request failed with status: ' . $response_sale_price->status(),
+                        'details' => $response_sale_price->json(),
                     ];
                 endif;
 
@@ -176,7 +186,6 @@ class ProductApiService
             return ['error' => 'Une erreur inattendue s\'est produite. ' . $e->getMessage()];
         }
     }
-
 
 }
 

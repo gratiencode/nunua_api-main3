@@ -35,7 +35,6 @@ class KazisafeProductController extends Controller
             // 'products.*.images' => 'required|array',
             'products.*.id_marque'   => 'required',
             'products.*.id_category' => 'required',
-            'products.*.quantity'    => 'required|integer',
             'products.*.price_red'   => 'nullable|numeric',
         ]);
 
