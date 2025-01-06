@@ -1,10 +1,11 @@
 <?php
 
 namespace App\Http\Controllers\api;
-use App\Http\Controllers\Controller;
+use App\Models\Produits;
+use App\Models\Entreprise;
 use Illuminate\Http\Request;
 use App\Services\ProductApiService;
-use App\Models\Entreprise;
+use App\Http\Controllers\Controller;
 
 class KazisafeProductController extends Controller
 {
@@ -20,6 +21,16 @@ class KazisafeProductController extends Controller
         $products = $this->productApiService->getKaziSafeProducts($request->access_token);
 
         return response()->json($products);
+    }
+
+    public function salePrices(Request $request)
+    {
+        try{
+            $products = $this->productApiService->getKaziSafeSalesPrice($request->access_token, $request->product_id);
+           return response()->json($products);
+        }catch(\Exception $e){
+            return response()->json(["error" => $e->getMessage()]);
+        }
     }
 
     public function saveKaziSafeProduct(Request $request)
@@ -44,7 +55,6 @@ class KazisafeProductController extends Controller
         if (isset($result['error'])) {
             return response()->json(['error' => $result['error']], 400);
         }
-
         return response()->json(['success' => $result['success'], 'data' => $result['data']]);
     }
 }

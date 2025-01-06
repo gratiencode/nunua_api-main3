@@ -135,17 +135,16 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
 #Inserer l'utilisateur kazisafe en nunua
 Route::post("/register-kazisafe/user", [UserController::class, 'connectWithKaziSafe]']);
 #Product api
+#Sales price
+Route::get('/sales-price', [KazisafeProductController::class, 'salePrices']);
 Route::get('/products', [KazisafeProductController::class, 'showAllProducts']);
 Route::post('/products', [KazisafeProductController::class, 'saveKaziSafeProduct']);
 
 //optimization routes
 Route::get('/optimize', function(){
-    $exitCode = Artisan::call('optimize');
-    return 'DONE';
-});
-
-Route::get('/cache', function(){
-    $exitCode = Artisan::call('cache:clear');
-    $exitCode = Artisan::call('config:cache');
+    $optimize = Artisan::call('optimize');
+    $clear_cache = Artisan::call('cache:clear');
+    $config_cache = Artisan::call('config:cache');
+    $config_clear = Artisan::call('config:clear');
     return 'DONE';
 });

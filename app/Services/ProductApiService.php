@@ -12,7 +12,7 @@ use App\Http\Controllers\api\UtilController;
 
 class ProductApiService
 {
-    protected $baseUrl, $allProductEndpoint, $measureProductEndpoint, $etatStockEndPoint, $salePriceRecquisition;
+    protected $baseUrl, $allProductEndpoint, $measureProductEndpoint, $etatStockEndPoint, $salePriceRecquisitionEndpoint;
 
     public function __construct()
     {
@@ -20,7 +20,7 @@ class ProductApiService
         $this->allProductEndpoint = 'produit/showall';
         $this->etatStockEndPoint = 'req/rem/inv/';
         $this->marqueProductEndpoint = 'marque/show/for/product/';
-        $this->salePriceRecquisition = 'prices/for/recq/';
+        $this->salePriceRecquisitionEndpoint = 'prices/for/recq/';
     }
     /**
      * Summary of getKaziSafeProducts
@@ -80,6 +80,71 @@ class ProductApiService
     }
 
     /**
+     * @param mixed @access_token
+     * @param mixed @product id
+     */
+
+    public function getKaziSafeSalesPrice($access_token, $product_id)
+    {
+        $baseUrl = $this->baseUrl;
+        $sale_price_endpoint = $this->salePriceRecquisitionEndpoint;
+        $etat_stock_endpoint = $this->etatStockEndPoint;
+
+        try {
+            $response_etat_stock = Http::withoutVerifying()
+                    ->withToken($access_token)
+                    ->accept('application/json')
+                    ->get($baseUrl . $etat_stock_endpoint . $product_id);
+                    
+                // Check if the response is successful
+                if ($response_etat_stock ->successful()):
+                    $etat_stock = $response_etat_stock->json();
+
+                    // Make the GET request to retrieve sales prices 
+                    $response_sale_prices = Http::withoutVerifying()
+                        ->timeout(60)
+                        ->withToken($access_token)
+                        ->accept('application/json')
+                        ->get($baseUrl . $sale_price_endpoint . $etat_stock['currentReqUid']);
+
+                    // Check if the response is successful
+                    if ($response_sale_prices->successful()) {
+                        return $response_sale_prices->json();
+                    }
+                endif;
+
+            // Handle client or server errors
+            if ($response_etat_stock->clientError() || $response_etat_stock->serverError()) {
+                
+                return [
+                    'status' => 'error',
+                    'message' => $baseUrl . $etat_stock_endpoint . ' API request failed with status: ' . $response_etat_stock->status(),
+                    'details' => $response_etat_stock->json(),
+                ];
+            }
+
+            if ($response_sale_prices->clientError() || $response_sale_prices->serverError()) {
+                
+                return [
+                    'status' => 'error',
+                    'message' => $baseUrl . $sale_price_endpoint . ' API request failed with status: ' . $response_sale_prices->status(),
+                    'details' => $response_sale_prices->json(),
+                ];
+            }
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Connection timeout or unreachable server.',
+            ];
+        } catch (Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Summary of saveKazisafeProductInNunua
      * @param array $products
      * @param mixed $entreprise
@@ -92,7 +157,6 @@ class ProductApiService
             $savedProducts = [];
             $baseUrl = $this->baseUrl;
             $etat_stock_endpoint = $this->etatStockEndPoint;
-            $sale_price_endpoint = $this->salePriceRecquisition;
 
             foreach ($products as $product):
                 $existingProduct = Produits::where('name_produit', $product['name'])
@@ -103,7 +167,7 @@ class ProductApiService
                     return ['error' => "Le produit " . $product['name'] . " existe déjà dans Nunua."];
                 }
 
-                // Fetch and save etat de staock data of the  selected products
+                // Fetch and save etat de stock data of the  selected products
                 $id_mesure = null;
                 $response_etat_stock = Http::withoutVerifying()
                     ->withToken($access_token)
@@ -112,13 +176,7 @@ class ProductApiService
 
                 if ($response_etat_stock ->successful()):
                     $etat_stock = $response_etat_stock->json();
-
-                    //Fetch the sale price endpoint
-                    $response_sale_price = Http::withoutVerifying()
-                                            ->withToken($access_token)
-                                            ->accept('application/json')
-                                            ->get($baseUrl . $sale_price_endpoint . $etat_stock['currentReqUid']);
-
+                    
                     $savedEtatStock = Mesure::firstOrCreate(
                         [
                             'name' => $etat_stock['mesure']['description'],
@@ -136,29 +194,25 @@ class ProductApiService
                     // Save product images
                     $images = UtilController::uploadMultipleImage($product['images'], '/uploads/products/');
 
-                    if($response_sale_price->successful()):
-                        $sale_price = $response_sale_price->json();
+                    $newProduct = $entreprise->produits()->create([
+                        'name_produit' => $product['name'],
+                        'description' => $product['description'],
+                        'price' => $product['price'],
+                        'image' => $images[0],
+                        'qte' => $etat_stock['quantStock'],
+                        'id_mesure' => $id_mesure,
+                        'id_marque' => $product['id_marque'],
+                        'id_category' => $product['id_category'],
+                        'price_red' => $product['price_red']
+                    ]);
 
-                        $newProduct = $entreprise->produits()->create([
-                            'name_produit' => $product['name'],
-                            'description' => $product['description'],
-                            'price' => $sale_price[0]['prixUnitaire'],
-                            'image' => $images[0],
-                            'qte' => $etat_stock['quantStock'],
-                            'id_mesure' => $id_mesure,
-                            'id_marque' => $product['id_marque'],
-                            'id_category' => $product['id_category'],
-                            'price_red' => $product['price_red']
+                    // Create product images
+                    foreach ($images as $image) {
+                        $newProduct->images()->create([
+                            'images' => $image,
                         ]);
-
-                        // Create product images
-                        foreach ($images as $image) {
-                            $newProduct->images()->create([
-                                'images' => $image,
-                            ]);
-                        }
-                        $savedProducts[] = $newProduct;
-                    endif;
+                    }
+                    $savedProducts[] = $newProduct;
                 endif;
 
                  // Handle client or server errors
@@ -167,14 +221,6 @@ class ProductApiService
                         'status' => 'error',
                         'message' => $baseUrl . $etat_stock_endpoint . ' API request failed with status: ' . $response_etat_stock->status(),
                         'details' => $response_etat_stock->json(),
-                    ];
-                endif;
-
-                if ($response_sale_price ->clientError() || $response_sale_price->serverError()):
-                    return [
-                        'status' => 'error',
-                        'message' => $baseUrl . $sale_price_endpoint . ' API request failed with status: ' . $response_sale_price->status(),
-                        'details' => $response_sale_price->json(),
                     ];
                 endif;
 
