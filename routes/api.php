@@ -130,15 +130,14 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post("/global/about_us", [AppSettingsController::class, 'createAbout']);
     Route::post("/global/social", [AppSettingsController::class, 'createSocial']);
 
-});
+    #Sales price
+    Route::get('/sales-price', [KazisafeProductController::class, 'salePrices']);
 
-#Inserer l'utilisateur kazisafe en nunua
-Route::post("/register-kazisafe/user", [UserController::class, 'connectWithKaziSafe]']);
-#Product api
-#Sales price
-Route::get('/sales-price', [KazisafeProductController::class, 'salePrices']);
-Route::get('/products', [KazisafeProductController::class, 'showAllProducts']);
-Route::post('/products', [KazisafeProductController::class, 'saveKaziSafeProduct']);
+    #Product api
+    Route::get('/products', [KazisafeProductController::class, 'showAllProducts']);
+    Route::post('/products', [KazisafeProductController::class, 'saveKaziSafeProduct']);
+
+});
 
 //optimization routes
 Route::get('/optimize', function(){
