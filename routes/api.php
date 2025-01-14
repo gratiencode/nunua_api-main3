@@ -136,7 +136,8 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     #Product api
     Route::get('/products', [KazisafeProductController::class, 'showAllProducts']);
     Route::post('/products', [KazisafeProductController::class, 'saveKaziSafeProduct']);
-
+    #Search product
+    Route::get('/search-product', [KazisafeProductController::class, 'searchProduct']);
 });
 
 //optimization routes

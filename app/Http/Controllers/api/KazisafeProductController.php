@@ -6,6 +6,7 @@ use App\Models\Entreprise;
 use Illuminate\Http\Request;
 use App\Services\ProductApiService;
 use App\Http\Controllers\Controller;
+use Exception;
 
 class KazisafeProductController extends Controller
 {
@@ -28,7 +29,7 @@ class KazisafeProductController extends Controller
         try{
             $products = $this->productApiService->getKaziSafeSalesPrice($request->access_token, $request->product_id);
            return response()->json($products);
-        }catch(\Exception $e){
+        }catch(Exception $e){
             return response()->json(["error" => $e->getMessage()]);
         }
     }
@@ -56,6 +57,17 @@ class KazisafeProductController extends Controller
             return response()->json(['error' => $result['error']], 400);
         }
         return response()->json(['success' => $result['success'], 'data' => $result['data']]);
+    }
+
+    public function searchProduct(Request $request){
+        try {
+            
+            $products = $this->productApiService->searchProductKazisafe($request->access_token, $request->keyword);
+
+            return response()->json(['data'=> $products], 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error occurred while searching: ' . $e->getMessage(), 'status' => 500]);
+        }
     }
 }
 

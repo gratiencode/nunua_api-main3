@@ -40,11 +40,6 @@ class ProductApiService
                 ->accept('application/json')
                 ->get($baseUrl . $product_endpoint);
 
-            \Log::info('Request URL', ['url' => $baseUrl . $product_endpoint]);
-            \Log::info('Response Status', ['status' => $response->status()]);
-            \Log::info('Response Headers', ['headers' => $response->headers()]);
-            \Log::info('Response Body', ['body' => $response->body()]);
-
             // Check if the response is successful
             if ($response->successful()) {
                 return $response->json();
@@ -233,6 +228,71 @@ class ProductApiService
         }
     }
 
+    // Search for a product
+    public function searchProductKazisafe($access_token, $keyword){
+        try {
+            $baseUrl = $this->baseUrl;
+            $product_endpoint = $this->allProductEndpoint;
+
+            try {
+                // call kazisafe product before making a search
+                $all_products = Http::withoutVerifying()
+                    ->timeout(60)
+                    ->withToken($access_token)
+                    ->accept('application/json')
+                    ->get($baseUrl . $product_endpoint);
+    
+                // Check if the response is successful
+                if ($all_products->successful()) {
+                    $products = $all_products->json();
+                
+                    // Filter the products array using array_filter
+                    $produits = array_filter($products, function ($product) use ($keyword) {
+                        return stripos($product['nomProduit'], $keyword) !== false;
+                    });
+                
+                    // Check if any products were found
+                    if (empty($produits)) {
+                        return response()->json([
+                            'message' => 'Aucun produit trouvé qui correspond à ' . $keyword,
+                        ], 400);
+                    }
+                
+                    return $produits;
+                }
+    
+                // Handle client or server errors
+                if ($all_products->clientError() || $all_products->serverError()) {
+                    \Log::error('API Error: ', [
+                        'status' => $all_products->status(),
+                        'body' => $all_products->body(),
+                        'headers' => $all_products->headers(),
+                    ]);
+    
+                    return [
+                        'status' => 'error',
+                        'message' => $baseUrl . $product_endpoint . ' API request failed with status: ' . $all_products->status(),
+                        'details' => $all_products->json(),
+                    ];
+                }
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                \Log::error('Connection Exception', ['message' => $e->getMessage()]);
+                return [
+                    'status' => 'error',
+                    'message' => 'Connection timeout or unreachable server.',
+                ];
+            } catch (Exception $e) {
+                \Log::error('General Exception', ['message' => $e->getMessage()]);
+                return [
+                    'status' => 'error',
+                    'message' => 'An unexpected error occurred: ' . $e->getMessage(),
+                ];
+            }
+            
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error occurred while searching: ' . $e->getMessage(), 'status' => 500]);
+        }
+    }
 }
 
 
