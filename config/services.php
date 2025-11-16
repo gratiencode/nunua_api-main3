@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    ## Google OAuth Configuration
+    'google' => [
+        'secret_file' => env('CLIENT_SECRET_FILE'),
+        'redirect_uri' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
 ];

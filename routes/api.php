@@ -18,7 +18,7 @@ use App\Http\Controllers\api\EntrepriseController;
 use App\Http\Controllers\api\NewsLetterController;
 use App\Http\Controllers\api\PermissionController;
 use App\Http\Controllers\api\AppSettingsController;
-
+use App\Http\Controllers\api\GoogleAuthController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -62,6 +62,11 @@ Route::get('/migrate', function () {
         "message" => "successfully migrated"
     ]);
 });
+
+## Google OAuth Routes
+Route::get('api-user/auth/google/login/', [GoogleAuthController::class, 'redirectToGoogle']);
+Route::get('api-user/auth/google/callback/', [GoogleAuthController::class, 'handleGoogleCallback']);
+
 
 //les routes privees
 Route::group(['middleware' => ['auth:sanctum']], function () {
