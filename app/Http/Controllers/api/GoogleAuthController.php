@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\api;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Services\GoogleAuthService;
-use Firebase\JWT\JWT;
+use Jenssegers\Agent\Agent;
 use Illuminate\Http\Request;
+use App\Services\GoogleAuthService;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+
 
 class GoogleAuthController extends Controller
 {
@@ -73,13 +74,19 @@ class GoogleAuthController extends Controller
         // Log user in
         Auth::login($user);
 
-        // Create access token (Sanctum)
-        $accessToken = $user->createToken('auth')->plainTextToken;
+       
+        $token = $user->createToken('google-auth')->plainTextToken;
 
-        return response()->json([
-            'message' => 'Logged in successfully',
-            'user' => $user,
-            'access_token' => $accessToken,
-        ]);
+        $agent = new Agent();
+
+        if ($agent->isMobile()) {
+            return redirect()->to(
+                'nunua://auth/callback?token=' . urlencode($token)
+            );
+        }
+
+        return redirect()->to(
+            'https://nunua.markets?token=' . urlencode($token)
+        );
     }
 }

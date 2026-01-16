@@ -143,6 +143,12 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/products', [KazisafeProductController::class, 'saveKaziSafeProduct']);
     #Search product
     Route::get('/search-product', [KazisafeProductController::class, 'searchProduct']);
+
+    Route::get('/me', function (Request $request) {
+        return response()->json([
+            'user' => $request->user(),
+        ]);
+    });
 });
 
 //optimization routes
